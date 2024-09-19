@@ -69,6 +69,7 @@ func (rm *envResourceManager) GetConfigMap(name, namespace string) (*corev1.Conf
 
 	retObj := &corev1.ConfigMap{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.UnstructuredContent(), &retObj); err != nil {
+		klog.Errorf("Failed to convert unstructured object to ConfigMap: %v", err)
 		return nil, err
 	}
 
