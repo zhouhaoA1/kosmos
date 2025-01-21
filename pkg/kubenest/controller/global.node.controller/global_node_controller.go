@@ -100,7 +100,7 @@ func (r *GlobalNodeController) SetupWithManager(mgr manager.Manager) error {
 				return !compareMaps(oldObj.Labels, newObj.Labels)
 			},
 			DeleteFunc: func(deleteEvent event.DeleteEvent) bool {
-				return false
+				return true
 			},
 			GenericFunc: func(genericEvent event.GenericEvent) bool {
 				return false
@@ -281,6 +281,14 @@ func (r *GlobalNodeController) Reconcile(ctx context.Context, request reconcile.
 	_, err := r.RootClientSet.CoreV1().Nodes().Get(ctx, globalNode.Name, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
+			// when node is deleted from hostcluster (not assigned to vc cluster), check global-node's status before delete it.
+			if globalNode.Spec.State != v1alpha1.NodeInUse {
+				err = r.KosmosClient.KosmosV1alpha1().GlobalNodes().Delete(ctx, globalNode.Name, metav1.DeleteOptions{})
+				if err != nil {
+					klog.Errorf("delete global node %s error: %v", globalNode.Name, err)
+					return reconcile.Result{RequeueAfter: utils.DefaultRequeueTime}, nil
+				}
+			}
 			return reconcile.Result{}, nil
 		}
 		klog.Errorf("can not get root node: %s", globalNode.Name)
